@@ -14,7 +14,7 @@ import com.example.wangxi.livedemo.pusher.LivePusher;
 
 public class MainActivity extends AppCompatActivity implements LiveStateChangeListener {
 
-    public static final String URL = "rtmp://139.199.227.129:1935/live/jason";
+    public static final String URL = "rtmp://119.23.26.123/live/chengguo";
     LivePusher live;
 
     private Handler handler = new Handler() {

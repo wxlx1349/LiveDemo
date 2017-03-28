@@ -101,7 +101,7 @@ void add_aac_body(unsigned char *buf, int len){
     //头信息配置
     /*AF 00 + AAC RAW data*/
     //0xAF
-    body[0] = 0xA5;//10 5 SoundFormat(4bits):10=AAC,SoundRate(2bits):3=44kHz,SoundSize(1bit):1=16-bit samples,SoundType(1bit):1=Stereo sound
+    body[0] = 0xAF;//10 5 SoundFormat(4bits):10=AAC,SoundRate(2bits):3=44kHz,SoundSize(1bit):1=16-bit samples,SoundType(1bit):1=Stereo sound
     body[1] = 0x01;//AACPacketType:1表示AAC raw
     memcpy(&body[2], buf, len); /*spec_buf是AAC raw数据*/
 	packet->m_packetType = RTMP_PACKET_TYPE_AUDIO;
@@ -162,7 +162,9 @@ void *push_thread(void *arg) {
     while (is_pushing) {
         //发送
         pthread_mutex_lock(&mutex);
-        pthread_cond_wait(&cond, &mutex);
+        while (queue_size()<1){
+            pthread_cond_wait(&cond, &mutex);
+        }
         //取出队列中的RTMPPacket
         RTMPPacket *packet = (RTMPPacket *) queue_get_first();
         if (packet) {
@@ -176,7 +178,7 @@ void *push_thread(void *arg) {
                 pthread_mutex_unlock(&mutex);
                 goto end;
             } else {
-                LOGE("%s", "RTMP 发送数据");
+//                LOGE("%s", "RTMP 发送数据");
             }
             RTMPPacket_Free(packet);
         }
@@ -430,7 +432,7 @@ void add_264_body(unsigned char *buf, int len) {
 
 JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireVideo
         (JNIEnv *env, jobject jobj, jbyteArray buffer) {
-    LOGI("发送数据1...");
+//    LOGI("发送数据1...");
     //视频数据转为YUV420P
     //NV21->YUV420P
     jbyte *nv21_buffer = env->GetByteArrayElements(buffer, NULL);
