@@ -16,7 +16,7 @@ public class VideoParam {
     // 码率480kbps
     private int bitrate = 480000;
     // 帧频默认25帧/s
-    private int fps = 25;
+    private int fps = 20;
     private int cameraId;
 
     public VideoParam(int width,int height,int cameraId){
@@ -81,6 +81,26 @@ public class VideoParam {
             Log.e("tag2","width="+sizes.get(index).width+"height="+sizes.get(index).height+"index="+index);
             width=sizes.get(index).width;
             height=sizes.get(index).height;
+        }
+    }
+
+    public void setCameraFpsRange( Camera.Parameters parameters){
+        List<int[]> ranges= parameters.getSupportedPreviewFpsRange();
+        for(int i=0;i<ranges.size();i++){
+            Log.e("VideoParam","tag2--range"+ranges.get(i)[0]+" h="+ranges.get(i)[1]);
+        }
+        int fps=(this.fps)*1000;
+        if(ranges!=null&&!ranges.isEmpty()){
+            int t=10000000;
+            int index=0;
+            for(int i=0;i<ranges.size();i++){
+                if(ranges.get(i)[0]-fps<t&&ranges.get(i)[0]-fps>0){
+                    t=ranges.get(i)[0]-fps;
+                    index=i;
+                }
+            }
+            parameters.setPreviewFpsRange(ranges.get(index)[0],ranges.get(index)[1]);
+            Log.e("tag2","fps range="+ranges.get(index)[0]+"high="+ranges.get(index)[1]);
         }
     }
 }

@@ -12,6 +12,7 @@ extern "C" {
 #include "rtmp.h"
 #include "queue.h"
 #include "faac.h"
+#include <stdlib.h>
 
 #ifndef TRUE
 #define TRUE	1
@@ -165,6 +166,7 @@ void *push_thread(void *arg) {
         while (queue_size()<1){
             pthread_cond_wait(&cond, &mutex);
         }
+        LOGE("Queue size =%d", queue_size());
         //取出队列中的RTMPPacket
         RTMPPacket *packet = (RTMPPacket *) queue_get_first();
         if (packet) {
@@ -265,14 +267,17 @@ JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_setVideoO
     param.i_fps_den = 1;  //* 帧率分母
     param.i_timebase_den = param.i_fps_num;
     param.i_timebase_num = param.i_fps_den;
-    param.i_threads = 1;//并行编码线程数量，0默认为多线程
-
+//    param.cpu=x264_cpu_detect();
+    param.i_threads = 0;//并行编码线程数量，0默认为多线程
+    param.b_deterministic=1;
+    param.i_sync_lookahead=X264_SYNC_LOOKAHEAD_AUTO;
+//    param.i_sync_lookahead=5;
     //是否把SPS和PPS放入每一个关键帧
     //SPS Sequence Parameter Set 序列参数集，PPS Picture Parameter Set 图像参数集
     //为了提高图像的纠错能力
     param.b_repeat_headers = 1;
     //设置Level级别   对应的分辨率最高
-    param.i_level_idc = 51;
+    param.i_level_idc = 30;  //51
     //设置Profile档次
     //baseline级别，没有B帧
     x264_param_apply_profile(&param, "baseline");
@@ -435,6 +440,8 @@ JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireVideo
 //    LOGI("发送数据1...");
     //视频数据转为YUV420P
     //NV21->YUV420P
+    struct timeval time1, time2,time3,time4;
+    gettimeofday( &time1, NULL );
     jbyte *nv21_buffer = env->GetByteArrayElements(buffer, NULL);
     jbyte *u = (jbyte *) pic_in.img.plane[1];
     jbyte *v = (jbyte *) pic_in.img.plane[2];
@@ -449,7 +456,8 @@ JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireVideo
         *(u + i) = *(nv21_buffer + y_len + i * 2 + 1);
         *(v + i) = *(nv21_buffer + y_len + i * 2);
     }
-
+    gettimeofday( &time2, NULL );
+    LOGE("time1=%d", time1.tv_usec-time2.tv_usec);
     //h264编码得到NALU数组
     x264_nal_t *nal = NULL;  //NAL
     int n_nal = -1;   //NALU的个数
@@ -458,6 +466,8 @@ JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireVideo
         LOGE("%s", "编码失败");
         return;
     }
+    gettimeofday( &time3, NULL );
+    LOGE("time2=%d", time3.tv_usec-time2.tv_usec);
     //使用rtmp协议将h264编码的视频数据发送给流媒体服务器
     //帧分为关键帧和普通帧，为了提高画面的纠错率，关键帧应包含SPS和PPS数据
     int sps_len, pps_len;
@@ -482,13 +492,15 @@ JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireVideo
             add_264_body(nal[i].p_payload, nal[i].i_payload);
         }
     }
+    gettimeofday( &time4, NULL );
+    LOGE("time3=%d", time4.tv_usec-time3.tv_usec);
     env->ReleaseByteArrayElements(buffer,nv21_buffer,NULL);
 }
 
 
 JNIEXPORT void JNICALL Java_com_example_wangxi_livedemo_jni_PushNative_fireAudio
         (JNIEnv *env, jobject jobj, jbyteArray buffer, jint len) {
-    LOGE("编码音频");
+//    LOGE("编码音频");
     int *pcmbuf;
     unsigned char *bitbuf;
     jbyte* b_buffer=env->GetByteArrayElements(buffer,0);
